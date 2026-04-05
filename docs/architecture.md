@@ -1,49 +1,96 @@
-# AgentDesk Architecture
+# AgentDesk — Architecture
 
 ## Overview
 
-AgentDesk is a Next.js 14 App Router application using Supabase for auth and database, Stripe for billing, and OpenAI for AI-powered analysis.
+AgentDesk is a multi-tenant SaaS application built on Next.js 14 with the App Router. Each organization is isolated at the database level using Supabase Row-Level Security.
 
-## Directory Structure
+## System Diagram
 
+```mermaid
+graph TB
+    subgraph Client["Browser / API Client"]
+        UI[Next.js App Router UI]
+        APICLIENT[API Client / SDK]
+    end
+
+    subgraph NextJS["Next.js Server (Vercel)"]
+        MIDDLEWARE[Auth Middleware]
+        PAGES[Server Components]
+        APIROUTES[API Routes]
+    end
+
+    subgraph External["External Services"]
+        SUPABASE[(Supabase Postgres + Auth)]
+        OPENAI[OpenAI API]
+        STRIPE[Stripe Billing]
+        UPSTASH[Upstash Redis]
+        SENTRY[Sentry]
+    end
+
+    UI --> MIDDLEWARE
+    APICLIENT --> MIDDLEWARE
+    MIDDLEWARE --> PAGES
+    MIDDLEWARE --> APIROUTES
+    PAGES --> SUPABASE
+    APIROUTES --> SUPABASE
+    APIROUTES --> OPENAI
+    APIROUTES --> STRIPE
+    APIROUTES --> UPSTASH
+    PAGES -.-> SENTRY
+    APIROUTES -.-> SENTRY
 ```
-src/
-  app/                    # Next.js App Router
-    (auth)/               # Auth pages (login, signup, reset)
-    (dashboard)/          # Protected dashboard pages
-    api/                  # API route handlers
-  components/             # React components
-  lib/                    # Utility libraries
-    supabase/             # Supabase clients (browser + server)
-    stripe/               # Stripe client + plan config
-    openai/               # GPT-4o integrations
-  types/                  # TypeScript type definitions
-supabase/
-  migrations/             # SQL migration files
-```
 
-## Data Flow
+## Request Flow
 
-1. Agent SDKs call `POST /api/runs` with trace data
-2. Run data stored in Supabase `agent_runs` table
-3. Cost tracked against org/agent budgets
-4. If budget threshold exceeded: webhooks triggered
-5. Failed runs can be analyzed with GPT-4o via `POST /api/runs/:id?action=analyze`
-6. Analytics aggregated on-demand from raw run data
+### Dashboard Page Load
+1. Browser hits `GET /dashboard`
+2. Middleware refreshes Supabase session from cookie
+3. Server Component calls `supabase.auth.getUser()`
+4. Server Component queries Supabase with RLS enforced
+5. HTML streamed to browser
+
+### Agent Execution
+1. Client calls `POST /api/agents/:id/execute`
+2. Middleware authenticates request
+3. API route checks Upstash rate limit (10 req/min)
+4. Validates monthly execution quota against org plan
+5. Creates `agent_executions` record with status=running
+6. Calls OpenAI with retry logic (3 attempts, exponential backoff)
+7. Updates execution record with result
+8. Fires webhooks for `execution.complete` event
+9. Returns execution result
+
+### Stripe Webhook
+1. Stripe calls `POST /api/billing/webhook`
+2. Route verifies `stripe-signature` header with `constructEvent()`
+3. Handles `checkout.session.completed`, `subscription.updated`, `subscription.deleted`
+4. Updates `orgs.plan` in Supabase using service role key (bypasses RLS)
 
 ## Multi-Tenancy
 
-- Every resource is scoped to an `org_id`
-- Supabase RLS policies enforce org isolation at the database level
-- API routes verify org membership before any data access
+All data is scoped by `org_id`. The `auth_user_org_ids()` PostgreSQL function returns the set of org IDs the current user belongs to. All RLS policies use this function.
 
-## Authentication
-
-- Supabase Auth (email/password + magic links)
-- JWT stored in HTTP-only cookies (via `@supabase/ssr`)
-- Next.js middleware validates session on every protected route
+```sql
+create or replace function auth_user_org_ids()
+returns setof uuid language sql security definer stable as $$
+  select org_id from org_members where user_id = auth.uid();
+$$;
+```
 
 ## Rate Limiting
 
-- Upstash Redis sliding window: 100 req/min per user (standard)
-- Strict limiter: 10 req/min for sensitive operations
+Using Upstash Redis with sliding window algorithm:
+- **General API routes**: 100 requests per minute per IP
+- **Agent executions**: 10 requests per minute per IP/user
+
+## Data Flow for Billing
+
+```
+User clicks Upgrade
+  → POST /api/billing/create-checkout
+  → Stripe creates Checkout Session
+  → User redirected to Stripe
+  → Stripe calls POST /api/billing/webhook
+  → org.plan updated in Supabase
+  → User sees new plan limits
+```
