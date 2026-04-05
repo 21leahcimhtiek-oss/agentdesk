@@ -1,41 +1,38 @@
-'use client';
-import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+"use client";
+import { useState } from "react";
+import { ChevronDown, Building2 } from "lucide-react";
+import type { Org } from "@/types";
 
-interface Org {
-  id: string;
-  name: string;
-  plan: string;
-}
+const PLAN_COLORS = {
+  free: "bg-gray-700 text-gray-300",
+  starter: "bg-blue-950 text-blue-400",
+  pro: "bg-aurora-950 text-aurora-400",
+  enterprise: "bg-amber-950 text-amber-400",
+};
 
-interface Props {
+interface OrgSwitcherProps {
+  currentOrg: Org;
   orgs: Org[];
-  currentOrgId: string;
 }
 
-export default function OrgSwitcher({ orgs, currentOrgId }: Props) {
+export default function OrgSwitcher({ currentOrg, orgs }: OrgSwitcherProps) {
   const [open, setOpen] = useState(false);
-  const current = orgs.find(o => o.id === currentOrgId);
 
   return (
     <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors text-sm w-full"
-      >
-        <span className="font-medium text-gray-900 truncate flex-1 text-left">{current?.name}</span>
-        <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
+      <button onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors border border-gray-700 w-full">
+        <Building2 className="w-4 h-4 text-gray-400 flex-shrink-0" />
+        <span className="text-white text-sm font-medium truncate flex-1 text-left">{currentOrg.name}</span>
+        <span className={`text-xs px-1.5 py-0.5 rounded capitalize ${PLAN_COLORS[currentOrg.plan]}`}>{currentOrg.plan}</span>
+        <ChevronDown className="w-4 h-4 text-gray-400" />
       </button>
-      {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
-          {orgs.map(org => (
-            <button
-              key={org.id}
-              onClick={() => setOpen(false)}
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
-            >
-              <div className="text-sm font-medium text-gray-900">{org.name}</div>
-              <div className="text-xs text-gray-500 capitalize">{org.plan}</div>
+      {open && orgs.length > 1 && (
+        <div className="absolute top-full mt-1 left-0 right-0 bg-gray-800 border border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
+          {orgs.map((org) => (
+            <button key={org.id} className="flex items-center gap-2 px-3 py-2.5 w-full hover:bg-gray-700 transition-colors text-left">
+              <Building2 className="w-4 h-4 text-gray-400" />
+              <span className="text-white text-sm">{org.name}</span>
             </button>
           ))}
         </div>
