@@ -1,110 +1,98 @@
-import { createClient } from "@/lib/supabase/server";
-import { BarChart3, Zap, DollarSign, CheckCircle } from "lucide-react";
-
-export const metadata = { title: "Dashboard" };
-
-async function getStats(orgId: string) {
-  const supabase = await createClient();
-  const today = new Date().toISOString().split("T")[0];
-
-  const [agentsRes, executionsRes, todayCostRes] = await Promise.all([
-    supabase.from("agents").select("id, status", { count: "exact" }).eq("org_id", orgId).neq("status", "deleted"),
-    supabase.from("agent_executions").select("id", { count: "exact" }).eq("org_id", orgId),
-    supabase.from("agent_executions").select("cost_usd").eq("org_id", orgId).gte("created_at", today),
-  ]);
-
-  const totalCostToday = (todayCostRes.data ?? []).reduce((s, r) => s + Number(r.cost_usd), 0);
-  const activeAgents = (agentsRes.data ?? []).filter((a) => a.status === "active").length;
-
-  return {
-    totalAgents: agentsRes.count ?? 0,
-    activeAgents,
-    totalExecutions: executionsRes.count ?? 0,
-    costToday: totalCostToday,
-  };
-}
-
-async function getRecentExecutions(orgId: string) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("agent_executions")
-    .select("id, status, tokens_used, cost_usd, duration_ms, created_at, agents(name)")
-    .eq("org_id", orgId)
-    .order("created_at", { ascending: false })
-    .limit(10);
-  return data ?? [];
-}
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { Activity, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react';
+import { formatCost } from '@/lib/utils';
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user) redirect('/login');
 
-  const member = await supabase.from("org_members").select("org_id, orgs(name, plan)").eq("user_id", user.id).single();
-  const orgId = member.data?.org_id ?? "";
-  const [stats, executions] = await Promise.all([getStats(orgId), getRecentExecutions(orgId)]);
+  const { data: member } = await supabase
+    .from('members')
+    .select('org_id')
+    .eq('user_id', user.id)
+    .single();
 
-  const statCards = [
-    { label: "Active Agents", value: stats.activeAgents, sub: `${stats.totalAgents} total`, icon: Zap, color: "text-aurora-400" },
-    { label: "Total Executions", value: stats.totalExecutions.toLocaleString(), sub: "all time", icon: BarChart3, color: "text-blue-400" },
-    { label: "Cost Today", value: `$${stats.costToday.toFixed(4)}`, sub: "USD", icon: DollarSign, color: "text-green-400" },
-    { label: "Success Rate", value: "98.2%", sub: "last 30 days", icon: CheckCircle, color: "text-emerald-400" },
+  const orgId = member?.org_id;
+
+  const [agentsRes, runsRes] = await Promise.all([
+    supabase.from('agents').select('id', { count: 'exact' }).eq('org_id', orgId ?? ''),
+    supabase.from('agent_runs').select('status, cost_usd, started_at').eq('org_id', orgId ?? '').gte('started_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+  ]);
+
+  const runs = runsRes.data ?? [];
+  const totalRuns = runs.length;
+  const failedRuns = runs.filter(r => r.status === 'failed').length;
+  const successRate = totalRuns > 0 ? ((totalRuns - failedRuns) / totalRuns * 100).toFixed(1) : '0';
+  const totalCost = runs.reduce((sum, r) => sum + (r.cost_usd ?? 0), 0);
+
+  const stats = [
+    { label: 'Total Agents', value: agentsRes.count ?? 0, icon: Activity, color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: 'Runs (30d)', value: totalRuns, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+    { label: 'Failed Runs', value: failedRuns, icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'Cost (30d)', value: formatCost(totalCost), icon: DollarSign, color: 'text-purple-600', bg: 'bg-purple-50' },
   ];
+
+  const recentRuns = await supabase
+    .from('agent_runs')
+    .select('id, status, cost_usd, latency_ms, started_at, agents(name)')
+    .eq('org_id', orgId ?? '')
+    .order('started_at', { ascending: false })
+    .limit(5);
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-gray-400 text-sm mt-1">Overview of your AI agent operations</p>
+        <h1 className="text-2xl font-bold text-gray-900">Overview</h1>
+        <p className="text-gray-600 text-sm mt-1">Last 30 days</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((card) => (
-          <div key={card.label} className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm text-gray-400">{card.label}</span>
-              <card.icon className={`w-5 h-5 ${card.color}`} />
+        {stats.map(s => (
+          <div key={s.label} className="card p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`p-2 rounded-lg ${s.bg}`}>
+                <s.icon className={`h-5 w-5 ${s.color}`} />
+              </div>
+              <span className="text-sm text-gray-600 font-medium">{s.label}</span>
             </div>
-            <p className="text-3xl font-bold text-white">{card.value}</p>
-            <p className="text-xs text-gray-500 mt-1">{card.sub}</p>
+            <div className="text-3xl font-bold text-gray-900">{s.value}</div>
           </div>
         ))}
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Recent Executions</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-gray-400 border-b border-gray-800">
-                <th className="text-left py-2 font-medium">Agent</th>
-                <th className="text-left py-2 font-medium">Status</th>
-                <th className="text-right py-2 font-medium">Tokens</th>
-                <th className="text-right py-2 font-medium">Cost</th>
-                <th className="text-right py-2 font-medium">Time</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
-              {executions.map((exec: any) => (
-                <tr key={exec.id} className="text-gray-300 hover:bg-gray-800/50 transition-colors">
-                  <td className="py-3">{exec.agents?.name ?? "—"}</td>
-                  <td className="py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      exec.status === "success" ? "bg-green-950 text-green-400" :
-                      exec.status === "failed" ? "bg-red-950 text-red-400" :
-                      "bg-yellow-950 text-yellow-400"
-                    }`}>{exec.status}</span>
-                  </td>
-                  <td className="py-3 text-right">{exec.tokens_used.toLocaleString()}</td>
-                  <td className="py-3 text-right">${Number(exec.cost_usd).toFixed(4)}</td>
-                  <td className="py-3 text-right text-gray-500">{new Date(exec.created_at).toLocaleTimeString()}</td>
-                </tr>
-              ))}
-              {executions.length === 0 && (
-                <tr><td colSpan={5} className="py-8 text-center text-gray-500">No executions yet. <a href="/agents" className="text-aurora-400">Create your first agent</a>.</td></tr>
-              )}
-            </tbody>
-          </table>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-gray-900">Recent Runs</h2>
+            <Link href="/runs" className="text-brand-600 text-sm hover:underline">View all</Link>
+          </div>
+          <div className="space-y-3">
+            {(recentRuns.data ?? []).map(run => (
+              <Link key={run.id} href={`/runs/${run.id}`} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                    run.status === 'success' ? 'bg-green-100 text-green-700' :
+                    run.status === 'failed' ? 'bg-red-100 text-red-700' :
+                    'bg-yellow-100 text-yellow-700'
+                  }`}>{run.status}</span>
+                  <span className="text-sm text-gray-700">{(run.agents as { name: string } | null)?.name ?? 'Unknown'}</span>
+                </div>
+                <span className="text-xs text-gray-500">{formatCost(run.cost_usd ?? 0)}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="card p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">Success Rate</h2>
+          <div className="text-5xl font-bold text-gray-900 mb-2">{successRate}%</div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="bg-green-500 h-2 rounded-full" style={{ width: `${successRate}%` }} />
+          </div>
+          <p className="text-sm text-gray-500 mt-2">{totalRuns - failedRuns} of {totalRuns} runs succeeded</p>
         </div>
       </div>
     </div>
