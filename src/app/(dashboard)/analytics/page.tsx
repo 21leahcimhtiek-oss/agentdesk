@@ -1,80 +1,76 @@
-import { createClient } from "@/lib/supabase/server";
-import UsageChart from "@/components/UsageChart";
-import CostBreakdown from "@/components/CostBreakdown";
-
-export const metadata = { title: "Analytics" };
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import CostChart from '@/components/CostChart';
+import LatencyChart from '@/components/LatencyChart';
 
 export default async function AnalyticsPage() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user) redirect('/login');
 
-  const member = await supabase.from("org_members").select("org_id").eq("user_id", user.id).single();
-  const orgId = member.data?.org_id;
+  const { data: member } = await supabase.from('members').select('org_id').eq('user_id', user.id).single();
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const { data: runs } = await supabase
+    .from('agent_runs')
+    .select('status, cost_usd, latency_ms, tokens_used, started_at')
+    .eq('org_id', member?.org_id ?? '')
+    .gte('started_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+    .order('started_at', { ascending: true });
 
-  const { data: executions } = await supabase
-    .from("agent_executions")
-    .select("created_at, status, tokens_used, cost_usd, agent_id, agents(name)")
-    .eq("org_id", orgId)
-    .gte("created_at", thirtyDaysAgo.toISOString())
-    .order("created_at", { ascending: true });
+  const byDay: Record<string, { date: string; runs: number; cost: number; latency: number[]; tokens: number; failed: number }> = {};
+  (runs ?? []).forEach(r => {
+    const day = r.started_at.slice(0, 10);
+    if (!byDay[day]) byDay[day] = { date: day, runs: 0, cost: 0, latency: [], tokens: 0, failed: 0 };
+    byDay[day].runs++;
+    byDay[day].cost += r.cost_usd ?? 0;
+    byDay[day].latency.push(r.latency_ms ?? 0);
+    byDay[day].tokens += r.tokens_used ?? 0;
+    if (r.status === 'failed') byDay[day].failed++;
+  });
 
-  const dailyCounts: Record<string, { success: number; failed: number; cost: number }> = {};
-  const agentCosts: Record<string, { name: string; cost: number; count: number }> = {};
+  const chartData = Object.values(byDay).map(d => ({
+    date: d.date,
+    cost: parseFloat(d.cost.toFixed(4)),
+    runs: d.runs,
+    avgLatency: d.latency.length > 0 ? Math.round(d.latency.reduce((a, b) => a + b, 0) / d.latency.length) : 0,
+    errorRate: d.runs > 0 ? parseFloat((d.failed / d.runs * 100).toFixed(1)) : 0,
+  }));
 
-  for (const exec of executions ?? []) {
-    const day = exec.created_at.split("T")[0];
-    if (!dailyCounts[day]) dailyCounts[day] = { success: 0, failed: 0, cost: 0 };
-    if (exec.status === "success") dailyCounts[day].success++;
-    else if (exec.status === "failed") dailyCounts[day].failed++;
-    dailyCounts[day].cost += Number(exec.cost_usd);
-
-    const agentName = (exec as any).agents?.name ?? exec.agent_id;
-    if (!agentCosts[exec.agent_id]) agentCosts[exec.agent_id] = { name: agentName, cost: 0, count: 0 };
-    agentCosts[exec.agent_id].cost += Number(exec.cost_usd);
-    agentCosts[exec.agent_id].count++;
-  }
-
-  const chartData = Object.entries(dailyCounts).map(([date, v]) => ({ date, ...v }));
-  const costData = Object.values(agentCosts).sort((a, b) => b.cost - a.cost).slice(0, 10);
-
-  const totalExecutions = (executions ?? []).length;
-  const totalCost = Object.values(dailyCounts).reduce((s, v) => s + v.cost, 0);
-  const successRate = totalExecutions > 0
-    ? ((executions ?? []).filter((e) => e.status === "success").length / totalExecutions * 100).toFixed(1)
-    : "0";
+  const totalRuns = runs?.length ?? 0;
+  const totalCost = runs?.reduce((s, r) => s + (r.cost_usd ?? 0), 0) ?? 0;
+  const avgLatency = totalRuns > 0 ? Math.round((runs?.reduce((s, r) => s + (r.latency_ms ?? 0), 0) ?? 0) / totalRuns) : 0;
+  const successRate = totalRuns > 0 ? ((runs?.filter(r => r.status === 'success').length ?? 0) / totalRuns * 100).toFixed(1) : '0';
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Analytics</h1>
-        <p className="text-gray-400 text-sm mt-1">Last 30 days performance</p>
+        <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+        <p className="text-gray-600 text-sm mt-1">Last 30 days</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total Executions", value: totalExecutions.toLocaleString() },
-          { label: "Total Cost", value: `$${totalCost.toFixed(4)}` },
-          { label: "Success Rate", value: `${successRate}%` },
-        ].map(({ label, value }) => (
-          <div key={label} className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <p className="text-sm text-gray-400 mb-2">{label}</p>
-            <p className="text-3xl font-bold text-white">{value}</p>
+          { label: 'Total Runs', value: totalRuns },
+          { label: 'Total Cost', value: `$${totalCost.toFixed(2)}` },
+          { label: 'Avg Latency', value: `${avgLatency}ms` },
+          { label: 'Success Rate', value: `${successRate}%` },
+        ].map(s => (
+          <div key={s.label} className="card p-5">
+            <div className="text-sm text-gray-500 mb-1">{s.label}</div>
+            <div className="text-2xl font-bold text-gray-900">{s.value}</div>
           </div>
         ))}
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-6">Execution Volume</h2>
-        <UsageChart data={chartData} />
-      </div>
-
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-6">Cost by Agent</h2>
-        <CostBreakdown data={costData} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">Daily Cost</h2>
+          <CostChart data={chartData} />
+        </div>
+        <div className="card p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">Average Latency (ms)</h2>
+          <LatencyChart data={chartData} />
+        </div>
       </div>
     </div>
   );
