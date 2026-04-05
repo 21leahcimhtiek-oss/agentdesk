@@ -1,38 +1,70 @@
 # Deploying AgentDesk to Vercel
 
 ## Prerequisites
+
 - Vercel account
-- Supabase project
-- Stripe account
-- Upstash Redis instance
+- Supabase project (with schema from `supabase/migrations/001_initial_schema.sql`)
+- Stripe account with 3 products created
+- OpenAI API key
+- Upstash Redis database
 - Sentry project
 
-## Steps
+## Step 1: Database Setup
 
-### 1. Fork and connect
-Fork this repo and connect it to Vercel.
+1. Go to your Supabase project → SQL Editor
+2. Run `supabase/migrations/001_initial_schema.sql`
+3. Copy `Project URL` and `anon public` key from Project Settings → API
 
-### 2. Set environment variables
-In Vercel dashboard -> Settings -> Environment Variables, add all vars from `.env.example`.
+## Step 2: Stripe Setup
 
-### 3. Configure Supabase
-- Enable Email auth in Supabase Auth settings
-- Run migrations: `npm run db:migrate` with your service role key
-- Set redirect URLs in Supabase: `https://your-domain.vercel.app/**`
+1. Create 3 products in Stripe Dashboard:
+   - AgentDesk Starter ($149/mo recurring)
+   - AgentDesk Pro ($399/mo recurring)
+   - AgentDesk Enterprise ($899/mo recurring)
+2. Copy each product's Price ID
+3. Enable Customer Portal in Stripe Dashboard → Settings → Billing
 
-### 4. Configure Stripe
-- Create products and prices for Starter ($49), Pro ($149), Enterprise ($499)
-- Set up webhook: `https://your-domain.vercel.app/api/billing/webhook`
-- Subscribe to: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
-- Add webhook signing secret as `STRIPE_WEBHOOK_SECRET`
+## Step 3: Deploy to Vercel
 
-### 5. Deploy
 ```bash
-vercel --prod
+npx vercel --prod
 ```
 
-### 6. Verify
-- Visit your domain and sign up
-- Create a test agent
-- Push a test run via the API
-- Verify it appears in the dashboard
+Or connect your GitHub repo to Vercel for automatic deployments.
+
+## Step 4: Environment Variables
+
+In Vercel Dashboard → Settings → Environment Variables, add:
+
+| Variable | Value |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
+| `STRIPE_SECRET_KEY` | Stripe secret key |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
+| `STRIPE_STARTER_PRICE_ID` | Starter plan price ID |
+| `STRIPE_PRO_PRICE_ID` | Pro plan price ID |
+| `STRIPE_ENTERPRISE_PRICE_ID` | Enterprise plan price ID |
+| `OPENAI_API_KEY` | OpenAI API key |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis URL |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token |
+| `SENTRY_DSN` | Sentry DSN |
+| `NEXT_PUBLIC_SENTRY_DSN` | Same Sentry DSN |
+| `NEXT_PUBLIC_APP_URL` | Your Vercel deployment URL |
+
+## Step 5: Stripe Webhook
+
+1. In Stripe Dashboard → Developers → Webhooks → Add endpoint
+2. URL: `https://your-vercel-url.vercel.app/api/billing/webhook`
+3. Events to listen for:
+   - `checkout.session.completed`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+4. Copy the webhook signing secret
+5. Add as `STRIPE_WEBHOOK_SECRET` in Vercel
+
+## Step 6: Verify
+
+Visit your deployment URL. You should see the AgentDesk landing page.
+Create an account, set up an org, and run your first agent!
