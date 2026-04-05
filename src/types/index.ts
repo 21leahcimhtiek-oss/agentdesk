@@ -1,95 +1,75 @@
-export type BillingPlan = "free" | "starter" | "pro" | "enterprise";
+export type Plan = 'starter' | 'pro' | 'enterprise';
+export type RunStatus = 'pending' | 'running' | 'success' | 'failed';
+export type MemberRole = 'owner' | 'admin' | 'member';
 
-export interface Org {
+export interface Organization {
   id: string;
   name: string;
   slug: string;
-  plan: BillingPlan;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
+  plan: Plan;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  monthly_run_limit: number;
   created_at: string;
   updated_at: string;
 }
 
-export type OrgRole = "owner" | "admin" | "member" | "viewer";
-
-export interface OrgMember {
+export interface Member {
+  id: string;
   org_id: string;
   user_id: string;
-  role: OrgRole;
+  role: MemberRole;
   created_at: string;
-  user?: {
-    id: string;
-    email: string;
-    user_metadata?: { full_name?: string; avatar_url?: string };
-  };
 }
-
-export type AgentStatus = "active" | "idle" | "error" | "deleted";
-export type AgentModel = "gpt-4o" | "gpt-4o-mini" | "gpt-3.5-turbo";
 
 export interface Agent {
   id: string;
   org_id: string;
   name: string;
-  description: string | null;
-  model: AgentModel;
-  system_prompt: string;
-  temperature: number;
-  max_tokens: number;
-  status: AgentStatus;
+  slug: string;
+  description?: string;
+  endpoint_url?: string;
+  api_key_hash?: string;
+  metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
-  execution_count?: number;
-  last_execution_at?: string | null;
 }
 
-export type ExecutionStatus = "running" | "success" | "failed";
+export interface ToolCall {
+  name: string;
+  input: Record<string, unknown>;
+  output?: unknown;
+  latency_ms?: number;
+  error?: string;
+}
 
-export interface AgentExecution {
+export interface AgentRun {
   id: string;
   agent_id: string;
   org_id: string;
-  input: string;
-  output: string | null;
-  status: ExecutionStatus;
+  status: RunStatus;
+  input: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  tool_calls: ToolCall[];
   tokens_used: number;
   cost_usd: number;
-  duration_ms: number | null;
-  error: string | null;
-  created_at: string;
-  agent?: Pick<Agent, "id" | "name" | "model">;
-}
-
-export type TemplateCategory =
-  | "customer-support"
-  | "data-analysis"
-  | "content"
-  | "coding"
-  | "general";
-
-export interface AgentTemplate {
-  id: string;
-  org_id: string | null;
-  name: string;
-  description: string | null;
-  category: TemplateCategory;
-  system_prompt: string;
-  model: AgentModel;
-  temperature: number;
-  is_public: boolean;
+  latency_ms: number;
+  error_message?: string;
+  started_at: string;
+  completed_at?: string;
   created_at: string;
 }
 
-export interface ApiKey {
+export interface Budget {
   id: string;
   org_id: string;
-  name: string;
-  key_hash: string;
-  key_prefix: string;
-  last_used_at: string | null;
-  created_by: string | null;
+  agent_id?: string;
+  monthly_limit_usd: number;
+  alert_threshold: number;
+  current_spend_usd: number;
+  period_start: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Webhook {
@@ -97,57 +77,29 @@ export interface Webhook {
   org_id: string;
   url: string;
   events: string[];
-  secret: string;
-  is_active: boolean;
-  created_at: string;
-}
-
-export interface UsageRecord {
-  id: string;
-  org_id: string;
-  period_start: string;
-  period_end: string;
-  total_executions: number;
-  total_tokens: number;
-  total_cost_usd: number;
+  secret_hash?: string;
+  active: boolean;
   created_at: string;
   updated_at: string;
 }
 
-export interface AuditLog {
-  id: string;
-  org_id: string;
-  user_id: string | null;
-  action: string;
-  resource_type: string;
-  resource_id: string | null;
-  metadata: Record<string, unknown>;
-  created_at: string;
+export interface AnalyticsData {
+  date: string;
+  runs: number;
+  success_rate: number;
+  avg_latency_ms: number;
+  total_cost_usd: number;
+  tokens_used: number;
 }
 
-export interface PlanLimits {
-  agents: number;
-  executions_per_month: number;
-  team_members: number;
-}
+export const PLAN_LIMITS: Record<Plan, { runs: number; agents: number; retention_days: number }> = {
+  starter: { runs: 10000, agents: 5, retention_days: 30 },
+  pro: { runs: 100000, agents: 25, retention_days: 90 },
+  enterprise: { runs: -1, agents: -1, retention_days: 365 },
+};
 
-export interface BillingPlanConfig {
-  id: BillingPlan;
-  name: string;
-  price_monthly: number;
-  price_id: string;
-  limits: PlanLimits;
-}
-
-export interface ApiResponse<T> {
-  data: T | null;
-  error: string | null;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  per_page: number;
-  has_more: boolean;
-}
+export const PLAN_PRICES: Record<Plan, number> = {
+  starter: 49,
+  pro: 149,
+  enterprise: 499,
+};
