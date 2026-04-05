@@ -1,0 +1,65 @@
+{
+  "products": [
+    {
+      "id": "starter",
+      "name": "AgentDesk Starter",
+      "price_monthly": 149,
+      "price_yearly": 1490,
+      "features": [
+        "5 agents",
+        "10,000 executions/mo",
+        "API access",
+        "Email support",
+        "Basic analytics",
+        "1 team member"
+      ],
+      "limits": {
+        "agents": 5,
+        "executions_per_month": 10000,
+        "team_members": 1
+      }
+    },
+    {
+      "id": "pro",
+      "name": "AgentDesk Pro",
+      "price_monthly": 399,
+      "price_yearly": 3990,
+      "popular": true,
+      "features": [
+        "25 agents",
+        "100,000 executions/mo",
+        "Webhooks & integrations",
+        "Priority support",
+        "Advanced analytics",
+        "10 team members",
+        "Custom templates"
+      ],
+      "limits": {
+        "agents": 25,
+        "executions_per_month": 100000,
+        "team_members": 10
+      }
+    },
+    {
+      "id": "enterprise",
+      "name": "AgentDesk Enterprise",
+      "price_monthly": 899,
+      "price_yearly": 8990,
+      "features": [
+        "Unlimited agents",
+        "1,000,000 executions/mo",
+        "SSO / SAML",
+        "99.9% SLA",
+        "Dedicated support",
+        "Unlimited team members",
+        "Audit logs",
+        "Custom models"
+      ],
+      "limits": {
+        "agents": -1,
+        "executions_per_month": 1000000,
+        "team_members": -1
+      }
+    }
+  ]
+}
