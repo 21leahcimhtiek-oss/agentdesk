@@ -1,82 +1,77 @@
-"use client";
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { TraceViewer } from "@/components/TraceViewer";
-import { StatusBadge } from "@/components/StatusBadge";
-import { formatCost, formatLatency, formatDate, formatTokens } from "@/lib/utils";
+import { createClient } from '@/lib/supabase/server';
+import { redirect, notFound } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
+import { formatDateTime, formatCost, formatLatency } from '@/lib/utils';
+import StatusBadge from '@/components/StatusBadge';
+import TraceViewer from '@/components/TraceViewer';
 
-interface RunDetail {
-  id: string;
-  status: "pending" | "running" | "success" | "failed";
-  input: Record<string, unknown>;
-  output: Record<string, unknown>;
-  tool_calls: unknown[];
-  tokens_used: number;
-  cost_usd: number;
-  latency_ms: number;
-  error_message?: string;
-  started_at: string;
-  completed_at?: string;
-  agents?: { name: string; slug: string };
-}
+export default async function RunDetailPage({ params }: { params: { id: string } }) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
 
-export default function RunDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const [run, setRun] = useState<RunDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: run } = await supabase
+    .from('agent_runs')
+    .select('*, agents(name, slug)')
+    .eq('id', params.id)
+    .single();
 
-  useEffect(() => {
-    fetch(`/api/runs/${id}`)
-      .then((r) => r.json())
-      .then((d) => { setRun(d.run); setLoading(false); });
-  }, [id]);
+  if (!run) notFound();
 
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading run...</div>;
-  if (!run) return <div className="p-8 text-center text-red-400">Run not found</div>;
+  const agent = run.agents as { name: string; slug: string } | null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 font-mono">{run.id}</h1>
-          <p className="text-gray-500 text-sm mt-1">{run.agents?.name} · {formatDate(run.started_at)}</p>
+    <div className="space-y-6 max-w-5xl">
+      <div className="flex items-center gap-4">
+        <Link href="/runs" className="text-gray-500 hover:text-gray-700"><ArrowLeft className="h-5 w-5" /></Link>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-900">Run Trace</h1>
+          <StatusBadge status={run.status} />
         </div>
-        <StatusBadge status={run.status} />
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Tokens Used", value: formatTokens(run.tokens_used) },
-          { label: "Cost", value: formatCost(run.cost_usd) },
-          { label: "Latency", value: formatLatency(run.latency_ms) },
-          { label: "Tool Calls", value: Array.isArray(run.tool_calls) ? run.tool_calls.length : 0 },
-        ].map((m) => (
-          <div key={m.label} className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">{m.label}</p>
-            <p className="text-xl font-bold text-gray-900 mt-1">{m.value}</p>
+          { label: 'Agent', value: agent?.name ?? '—' },
+          { label: 'Tokens Used', value: run.tokens_used },
+          { label: 'Cost', value: formatCost(run.cost_usd) },
+          { label: 'Latency', value: formatLatency(run.latency_ms) },
+        ].map(s => (
+          <div key={s.label} className="card p-4">
+            <div className="text-xs text-gray-500 mb-1">{s.label}</div>
+            <div className="font-semibold text-gray-900">{s.value}</div>
           </div>
         ))}
       </div>
 
       {run.error_message && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-sm font-medium text-red-700">Error</p>
-          <p className="text-sm text-red-600 mt-1 font-mono">{run.error_message}</p>
+        <div className="card p-4 border-red-200 bg-red-50">
+          <div className="text-sm font-medium text-red-800 mb-1">Error</div>
+          <div className="text-sm text-red-700 font-mono">{run.error_message}</div>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 mb-3">Input</h3>
-          <pre className="text-xs text-gray-600 overflow-auto max-h-48 bg-gray-50 p-3 rounded">{JSON.stringify(run.input, null, 2)}</pre>
+      <div className="card p-6">
+        <h2 className="font-semibold text-gray-900 mb-4">Tool Calls</h2>
+        <TraceViewer toolCalls={run.tool_calls ?? []} />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="card p-6">
+          <h2 className="font-semibold text-gray-900 mb-3">Input</h2>
+          <pre className="text-xs bg-gray-50 p-3 rounded-lg overflow-auto max-h-64 text-gray-700">{JSON.stringify(run.input, null, 2)}</pre>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 mb-3">Output</h3>
-          <pre className="text-xs text-gray-600 overflow-auto max-h-48 bg-gray-50 p-3 rounded">{JSON.stringify(run.output, null, 2)}</pre>
+        <div className="card p-6">
+          <h2 className="font-semibold text-gray-900 mb-3">Output</h2>
+          <pre className="text-xs bg-gray-50 p-3 rounded-lg overflow-auto max-h-64 text-gray-700">{JSON.stringify(run.output, null, 2)}</pre>
         </div>
       </div>
 
-      <TraceViewer toolCalls={run.tool_calls as Array<{ name: string; input: unknown; output: unknown; latency_ms?: number }>} />
+      <div className="text-xs text-gray-400 flex gap-6">
+        <span>Started: {formatDateTime(run.started_at)}</span>
+        {run.completed_at && <span>Completed: {formatDateTime(run.completed_at)}</span>}
+      </div>
     </div>
   );
 }
