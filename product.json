@@ -1,0 +1,12 @@
+{
+  "name": "AgentDesk",
+  "version": "1.0.0",
+  "description": "Zero-touch AI agent orchestration for enterprise teams",
+  "price_monthly": 149,
+  "price_yearly": 1490,
+  "category": "AI Infrastructure",
+  "tags": ["ai", "agents", "orchestration", "enterprise", "automation"],
+  "website": "https://agentdesk.app",
+  "company": "Aurora Rayes LLC",
+  "support_email": "support@agentdesk.app"
+}
