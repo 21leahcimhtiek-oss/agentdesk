@@ -1,47 +1,36 @@
-import Stripe from "stripe";
-import type { BillingPlan, BillingPlanConfig, PlanLimits } from "@/types";
+import Stripe from 'stripe';
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+  apiVersion: '2024-06-20',
   typescript: true,
 });
 
-export const PLAN_LIMITS: Record<BillingPlan, PlanLimits> = {
-  free: { agents: 1, executions_per_month: 100, team_members: 1 },
-  starter: { agents: 5, executions_per_month: 10000, team_members: 1 },
-  pro: { agents: 25, executions_per_month: 100000, team_members: 10 },
-  enterprise: { agents: -1, executions_per_month: 1000000, team_members: -1 },
+export const PLANS = {
+  starter: {
+    name: 'Starter',
+    price: 49,
+    priceId: process.env.STRIPE_STARTER_PRICE_ID!,
+    runs: 10000,
+    agents: 5,
+    retention: 30,
+    features: ['10,000 runs/month', '5 agents', '30-day retention', 'Email alerts'],
+  },
+  pro: {
+    name: 'Pro',
+    price: 149,
+    priceId: process.env.STRIPE_PRO_PRICE_ID!,
+    runs: 100000,
+    agents: 25,
+    retention: 90,
+    features: ['100,000 runs/month', '25 agents', '90-day retention', 'Slack + email alerts', 'GPT-4o failure analysis'],
+  },
+  enterprise: {
+    name: 'Enterprise',
+    price: 499,
+    priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID!,
+    runs: -1,
+    agents: -1,
+    retention: 365,
+    features: ['Unlimited runs', 'Unlimited agents', '1-year retention', 'Priority support', 'SSO', 'Anomaly detection'],
+  },
 };
-
-export const PLANS: BillingPlanConfig[] = [
-  {
-    id: "starter",
-    name: "Starter",
-    price_monthly: 149,
-    price_id: process.env.STRIPE_STARTER_PRICE_ID!,
-    limits: PLAN_LIMITS.starter,
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price_monthly: 399,
-    price_id: process.env.STRIPE_PRO_PRICE_ID!,
-    limits: PLAN_LIMITS.pro,
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price_monthly: 899,
-    price_id: process.env.STRIPE_ENTERPRISE_PRICE_ID!,
-    limits: PLAN_LIMITS.enterprise,
-  },
-];
-
-export function getPlanConfig(plan: BillingPlan): BillingPlanConfig | undefined {
-  return PLANS.find((p) => p.id === plan);
-}
-
-export function isWithinLimit(limit: number, current: number): boolean {
-  if (limit === -1) return true; // unlimited
-  return current < limit;
-}
