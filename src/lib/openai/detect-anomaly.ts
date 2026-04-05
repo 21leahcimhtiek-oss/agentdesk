@@ -1,50 +1,41 @@
-import OpenAI from "openai";
+import OpenAI from 'openai';
+import type { AnalyticsData } from '@/types';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export interface AnomalyReport {
-  hasAnomalies: boolean;
+export interface AnomalyDetectionResult {
+  detected: boolean;
   anomalies: Array<{
-    type: string;
+    type: 'cost_spike' | 'latency_spike' | 'error_rate' | 'token_spike' | 'run_volume';
     description: string;
-    severity: "low" | "medium" | "high";
-    runIds: string[];
+    severity: 'low' | 'medium' | 'high';
+    affected_date: string;
+    expected_value: number;
+    actual_value: number;
   }>;
   summary: string;
 }
 
-export async function detectAnomalies(
-  runHistory: Array<{
-    id: string;
-    status: string;
-    tokens_used: number;
-    cost_usd: number;
-    latency_ms: number;
-    started_at: string;
-  }>
-): Promise<AnomalyReport> {
-  if (runHistory.length < 3) {
-    return { hasAnomalies: false, anomalies: [], summary: "Insufficient data for anomaly detection." };
+export async function detectAnomalies(data: AnalyticsData[]): Promise<AnomalyDetectionResult> {
+  if (data.length < 3) {
+    return { detected: false, anomalies: [], summary: 'Insufficient data for anomaly detection' };
   }
 
-  const prompt = `Analyze this AI agent run history for anomalies. Look for unusual patterns in latency, cost, token usage, error rates, or timing.
+  const prompt = `You are an AI observability expert. Detect statistical anomalies (Z-score > 2.5 or trend breaks) in this agent platform time-series data:
 
-Run History (last ${runHistory.length} runs):
-${JSON.stringify(runHistory, null, 2)}
+${JSON.stringify(data, null, 2)}
 
-Respond with JSON:
-{
-  "hasAnomalies": boolean,
-  "anomalies": [{ "type": string, "description": string, "severity": "low|medium|high", "runIds": string[] }],
-  "summary": string
-}`;
+Return JSON with: detected (bool), anomalies (array with type, description, severity, affected_date, expected_value, actual_value), summary (string).
+Types: cost_spike, latency_spike, error_rate, token_spike, run_volume`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [{ role: "user", content: prompt }],
-    response_format: { type: "json_object" },
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: prompt }],
+    response_format: { type: 'json_object' },
     temperature: 0.1,
   });
 
-  return JSON.parse(response.choices[0].message.content || "{}") as AnomalyReport;
+  const content = response.choices[0].message.content;
+  if (!content) throw new Error('No response from OpenAI');
+  return JSON.parse(content) as AnomalyDetectionResult;
 }
