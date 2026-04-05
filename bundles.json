@@ -1,0 +1,20 @@
+{
+  "bundles": [
+    {
+      "name": "Aurora AI Suite",
+      "description": "AgentDesk + IncidentIQ for full AI ops coverage",
+      "products": ["agentdesk", "incidentiq"],
+      "discount_pct": 20,
+      "price_monthly": 438,
+      "price_yearly": 4380
+    },
+    {
+      "name": "Aurora Enterprise OS",
+      "description": "Complete enterprise operations platform",
+      "products": ["agentdesk", "talentpulse", "databridge", "incidentiq"],
+      "discount_pct": 30,
+      "price_monthly": 1049,
+      "price_yearly": 10490
+    }
+  ]
+}
