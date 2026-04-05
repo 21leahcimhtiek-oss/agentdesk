@@ -1,53 +1,39 @@
-# AgentDesk — Social Media Posts
+# AgentDesk Social Media Posts
 
-## Twitter/X
+## Launch Tweet
+Just shipped AgentDesk - observability for AI agents.
 
-**Launch Tweet:**
-Introducing AgentDesk — the missing observability layer for AI agents.
+See every tool call. Track every dollar. Fix failures in minutes.
 
-Full run traces. Cost tracking. GPT-4o failure analysis. Budget alerts to Slack.
+Free 14-day trial. No credit card required.
 
-If you're shipping AI agents, you need this. agentdesk.io
+agentdesk.io
 
----
+## LinkedIn Post
+AI agents are moving into production faster than teams can monitor them.
 
-**Feature: Failure Analysis**
-Your AI agent failed at 3am. Do you know why?
+We built AgentDesk to solve this:
+- Full run traces (every tool call, token, latency)
+- Per-agent cost tracking with budget alerts
+- GPT-4o powered failure analysis
+- Webhook alerts to Slack/PagerDuty
 
-AgentDesk uses GPT-4o to automatically analyze failed runs and tell you exactly what went wrong — before your users notice.
+If your team is shipping AI agents, you need observability. That's what we built.
 
-Root cause analysis, not just error logs.
+14-day free trial at agentdesk.io
 
----
+## Hacker News Show HN
+Show HN: AgentDesk - Observability platform for AI agents
 
-**Feature: Cost Tracking**
-AI agent costs can spiral fast.
+We built AgentDesk after spending too much time manually debugging failed LLM agent runs by grepping through logs.
 
-AgentDesk tracks every dollar spent per agent, per team, per project. Set budget limits. Get alerted before you overspend.
+Key features:
+- Ingest run traces via REST API (agent-framework agnostic)
+- Full trace viewer: tool calls, inputs/outputs, latency, tokens
+- Budget management with alerts before you blow your OpenAI limit
+- GPT-4o analyzes failed runs and suggests fixes
+- Multi-tenant for teams and agencies
 
-No surprise bills. agentdesk.io
+Stack: Next.js 14, Supabase, Stripe, OpenAI, Upstash Redis
 
----
-
-## LinkedIn
-
-**Product Launch Post:**
-We built AgentDesk after watching teams ship AI agents with zero production visibility.
-
-The pattern: an agent fails, costs spike, nobody knows until users complain. Debugging means grepping through logs hoping to find the issue.
-
-AgentDesk solves this with:
-- Full run traces (every tool call, token, cost)
-- GPT-4o powered root cause analysis
-- Budget limits with Slack alerts
-- Multi-tenant from day one
-
-If your team ships AI agents, this is for you. Link in comments.
-
----
-
-## Product Hunt
-
-**Tagline:** AI agent observability platform — traces, costs, and failure analysis
-
-**Description:** AgentDesk gives engineering teams full visibility into their AI agents. Track every run, every tool call, every dollar. GPT-4o analyzes failures automatically. Set budget limits with Slack alerts. Multi-tenant from day one.
+Would love feedback from anyone building with AI agents in production.
