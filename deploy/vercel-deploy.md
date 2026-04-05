@@ -1,54 +1,38 @@
-# Deploying AgentDesk on Vercel
+# Deploying AgentDesk to Vercel
 
 ## Prerequisites
-
 - Vercel account
 - Supabase project
 - Stripe account
 - Upstash Redis instance
+- Sentry project
 
-## One-Click Deploy
+## Steps
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/21leahcimhtiek-oss/agentdesk)
+### 1. Fork and connect
+Fork this repo and connect it to Vercel.
 
-## Manual Deployment
+### 2. Set environment variables
+In Vercel dashboard -> Settings -> Environment Variables, add all vars from `.env.example`.
 
-### 1. Clone and install
-```bash
-git clone https://github.com/21leahcimhtiek-oss/agentdesk
-cd agentdesk
-npm install
-```
+### 3. Configure Supabase
+- Enable Email auth in Supabase Auth settings
+- Run migrations: `npm run db:migrate` with your service role key
+- Set redirect URLs in Supabase: `https://your-domain.vercel.app/**`
 
-### 2. Set up Supabase
-1. Create a new Supabase project
-2. Run the migration: paste `supabase/migrations/001_initial_schema.sql` in the SQL editor
-3. Copy your project URL and anon key
-
-### 3. Set up Stripe
-1. Create products in Stripe Dashboard
-2. Note the price IDs for Starter, Pro, Enterprise plans
-3. Set up a webhook endpoint pointing to `/api/billing/webhook`
-
-### 4. Configure environment variables in Vercel
-
-```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-STRIPE_STARTER_PRICE_ID=
-STRIPE_PRO_PRICE_ID=
-STRIPE_ENTERPRISE_PRICE_ID=
-OPENAI_API_KEY=
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
-```
+### 4. Configure Stripe
+- Create products and prices for Starter ($49), Pro ($149), Enterprise ($499)
+- Set up webhook: `https://your-domain.vercel.app/api/billing/webhook`
+- Subscribe to: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+- Add webhook signing secret as `STRIPE_WEBHOOK_SECRET`
 
 ### 5. Deploy
 ```bash
-npx vercel --prod
+vercel --prod
 ```
+
+### 6. Verify
+- Visit your domain and sign up
+- Create a test agent
+- Push a test run via the API
+- Verify it appears in the dashboard
