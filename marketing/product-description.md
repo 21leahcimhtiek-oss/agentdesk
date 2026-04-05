@@ -1,49 +1,26 @@
-# AgentDesk — Product Description
+# AgentDesk Product Description
 
-## The Problem
+## Elevator Pitch
+AgentDesk is the observability platform built for AI engineering teams. Get instant visibility into every agent run, understand your costs, and resolve failures before they impact users.
 
-Engineering teams shipping AI agents have zero visibility into what their agents are doing in production. When a customer-facing agent fails, you find out from user complaints — not dashboards. Costs spike with no warning. Debugging requires digging through raw logs.
+## Long Description
+As AI agents move into production, engineering teams face a new class of problems: agents fail in unpredictable ways, costs spiral without warning, and debugging a failed run is like finding a needle in a haystack.
 
-## The Solution
+AgentDesk solves this with a centralized hub for all your AI agents:
 
-AgentDesk is the central nervous system for your AI agent infrastructure. Every run is tracked, every tool call recorded, every dollar accounted for.
+**See everything** - Every tool call, token count, latency measurement, and error message is captured and displayed in a beautiful trace viewer.
 
-## Key Features
+**Control costs** - Set per-agent budgets with automatic alerts when you approach your limit. Never get surprised by a $5,000 OpenAI bill again.
 
-### Agent Registry
-Register all your deployed agents in one place. Track their configuration, endpoint URLs, and access credentials with API key management.
+**Fix failures fast** - When an agent fails, GPT-4o analyzes the full run trace and tells you exactly what went wrong and how to fix it.
 
-### Run Trace Viewer
-Every agent execution creates a detailed trace showing:
-- All tool calls with input/output
-- Token usage per call
-- Latency breakdown
-- Full error context
+**Scale confidently** - Multi-tenant from day one. Whether you're managing agents for one team or a hundred customers, AgentDesk handles it.
 
-### Cost Intelligence
-- Real-time cost tracking per agent, team, and project
-- Monthly budget limits with configurable alert thresholds
-- 30-day trend analysis
-- Cost anomaly detection via GPT-4o
+## Target Use Cases
+1. SaaS companies with LLM-powered features wanting production observability
+2. AI agencies managing agents for multiple clients
+3. Enterprise AI platform teams with dozens of agent deployments
+4. Individual developers building agent-powered products
 
-### AI-Powered Failure Analysis
-When an agent fails, GPT-4o automatically analyzes the error and tool call sequence to identify the root cause and suggest fixes. No more manual log spelunking.
-
-### Webhook Alerts
-Route alerts to Slack, PagerDuty, or any HTTP endpoint:
-- Agent failures
-- Budget threshold exceeded
-- Anomalous behavior detected
-
-## Target Customers
-
-- AI-first startups with multiple agents in production
-- Enterprise AI platform teams
-- ML engineering teams at scale-ups
-- Agencies building AI products for clients
-
-## Pricing
-
-- **Starter** ($49/mo): 10K runs, 5 agents, 30-day retention
-- **Pro** ($149/mo): 100K runs, 25 agents, 90-day retention + GPT-4o analysis
-- **Enterprise** ($499/mo): Unlimited + SSO + custom SLA
+## Integration
+AgentDesk works with any AI agent framework - LangChain, LlamaIndex, AutoGen, CrewAI, or custom implementations. Just call our REST API after each run.
