@@ -1,7 +1,17 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+
+const PUBLIC_PATHS = ['/', '/login', '/signup', '/reset-password'];
+const PUBLIC_API = ['/api/billing/webhook'];
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (PUBLIC_PATHS.includes(pathname) || PUBLIC_API.some(p => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -9,13 +19,9 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
+        getAll() { return request.cookies.getAll(); },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -25,32 +31,24 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-  const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/signup") || pathname.startsWith("/reset-password");
-  const isDashboardRoute = pathname.startsWith("/dashboard") || pathname.startsWith("/agents") || pathname.startsWith("/executions") || pathname.startsWith("/analytics") || pathname.startsWith("/billing") || pathname.startsWith("/settings") || pathname.startsWith("/templates") || pathname.startsWith("/integrations");
+  const protectedPaths = ['/dashboard', '/agents', '/runs', '/analytics', '/budgets', '/webhooks', '/settings', '/billing'];
+  const isProtected = protectedPaths.some(p => pathname.startsWith(p));
 
-  if (!user && isDashboardRoute) {
+  if (!user && isProtected) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("redirectTo", pathname);
+    url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
+  if (!user && pathname.startsWith('/api/') && !pathname.startsWith('/api/auth')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   return supabaseResponse;
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|monitoring|api/billing/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
