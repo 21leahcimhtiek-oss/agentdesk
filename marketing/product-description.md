@@ -1,26 +1,61 @@
-# AgentDesk Product Description
+# AgentDesk — Product Description
 
-## Elevator Pitch
-AgentDesk is the observability platform built for AI engineering teams. Get instant visibility into every agent run, understand your costs, and resolve failures before they impact users.
+## What Is AgentDesk?
 
-## Long Description
-As AI agents move into production, engineering teams face a new class of problems: agents fail in unpredictable ways, costs spiral without warning, and debugging a failed run is like finding a needle in a haystack.
+AgentDesk is a **production-ready AI agent orchestration platform** for engineering teams that need to deploy, monitor, and manage AI agents at scale — without building custom infrastructure.
 
-AgentDesk solves this with a centralized hub for all your AI agents:
+Think of it as **Vercel for AI agents**: you bring your prompts and business logic, AgentDesk handles the platform.
 
-**See everything** - Every tool call, token count, latency measurement, and error message is captured and displayed in a beautiful trace viewer.
+## The Problem
 
-**Control costs** - Set per-agent budgets with automatic alerts when you approach your limit. Never get surprised by a $5,000 OpenAI bill again.
+Teams using AI agents in production struggle with:
+- **No observability**: Agents fail silently. You don't know why.
+- **Cost surprises**: OpenAI bills pile up with no per-agent breakdown.
+- **Collaboration friction**: Junior devs can't safely touch production agents.
+- **DIY overhead**: Rate limiting, retries, webhooks, billing — built from scratch every time.
 
-**Fix failures fast** - When an agent fails, GPT-4o analyzes the full run trace and tells you exactly what went wrong and how to fix it.
+## The Solution
 
-**Scale confidently** - Multi-tenant from day one. Whether you're managing agents for one team or a hundred customers, AgentDesk handles it.
+AgentDesk gives you a control plane for all your AI agents:
 
-## Target Use Cases
-1. SaaS companies with LLM-powered features wanting production observability
-2. AI agencies managing agents for multiple clients
-3. Enterprise AI platform teams with dozens of agent deployments
-4. Individual developers building agent-powered products
+| Feature | Benefit |
+|---------|---------|
+| Real-time execution logs | Know exactly what every agent did and why it failed |
+| Per-agent cost tracking | Charge it back to teams, projects, or clients |
+| Role-based access | Owners configure, viewers observe — nothing breaks |
+| Webhook events | Agents trigger your Slack/Jira/PagerDuty automatically |
+| Template library | Go from zero to running agent in under 5 minutes |
+| Stripe billing | Monetize AI usage with usage-based or subscription plans |
 
-## Integration
-AgentDesk works with any AI agent framework - LangChain, LlamaIndex, AutoGen, CrewAI, or custom implementations. Just call our REST API after each run.
+## Use Cases
+
+### Customer Support Automation
+Deploy a GPT-4o-powered support agent. Log every ticket response, track resolution quality, escalate failures automatically via webhook.
+
+### Data Processing Pipelines
+Trigger agents on data events. Track token consumption per dataset. Set monthly execution budgets per team.
+
+### Content Generation
+Generate SEO content at scale. Monitor quality, cost per article, and success rates across campaigns.
+
+### Internal Operations
+Automate incident reports, meeting summaries, and code reviews. Keep a full audit trail for compliance.
+
+## Competitive Advantages
+
+1. **Multi-tenancy from day one**: RLS-enforced org isolation, not bolted on.
+2. **Stripe-native billing**: Not an afterthought. Plans, limits, and upgrades work out of the box.
+3. **Audit log for compliance**: Every action is recorded. SOC 2 ready.
+4. **Template library**: Reduce time-to-value for new teams to under 10 minutes.
+5. **Self-serve to enterprise**: Start on $149/mo, scale to Enterprise without replatforming.
+
+## Technical Specs
+
+- **Frontend**: Next.js 14 App Router, TypeScript, Tailwind CSS
+- **Auth**: Supabase Auth (email/password, magic link, OAuth-ready)
+- **Database**: Supabase Postgres with RLS
+- **AI**: OpenAI (GPT-4o, GPT-4o-mini, GPT-3.5-turbo)
+- **Billing**: Stripe Subscriptions + Customer Portal
+- **Rate limiting**: Upstash Redis sliding window
+- **Monitoring**: Sentry (client + server + edge)
+- **Deployment**: Vercel (iad1 region, Docker-ready)
