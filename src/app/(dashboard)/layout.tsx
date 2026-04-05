@@ -1,17 +1,25 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import Sidebar from "@/components/Sidebar";
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import Sidebar from '@/components/Sidebar';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect('/login');
+
+  const { data: member } = await supabase
+    .from('members')
+    .select('org_id, role, organizations(id, name, slug, plan)')
+    .eq('user_id', user.id)
+    .single();
+
+  const org = member?.organizations as { id: string; name: string; slug: string; plan: string } | null;
 
   return (
-    <div className="flex h-screen bg-gray-950 overflow-hidden">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto bg-gray-950">
-        <div className="p-6 lg:p-8">
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar orgName={org?.name ?? 'My Organization'} orgPlan={org?.plan ?? 'starter'} />
+      <main className="flex-1 overflow-auto">
+        <div className="p-8 max-w-7xl mx-auto">
           {children}
         </div>
       </main>
